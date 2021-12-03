@@ -3,6 +3,9 @@ from utils import *
 now = datetime.now()
 date_tag = now.strftime("%Y%m%d")
 
+semcor = False
+masc = True
+
 save = True
 fname = f'dfs_semcor_all_20211202.pkl'
 
@@ -18,11 +21,11 @@ if __name__ == "__main__":
 	
 	# Obtain all unique words
 	vocab = set(df_no_punc.words_no_punc_w_lemma_critical_word.str.lower())
-	vocab = {'wedding', 'camp'}
+	# vocab = {'wedding', 'camp'}
 	
 	# Get GloVe dict for words of interest
 	w2v = read_glove_embed(vocab, GLOVEDIR + 'glove.840B.300d.txt')
-	print(f'The following words not available in GloVe dict: {vocab - w2v.keys()}')  # missing words
+	print(f'The following {len(vocab - w2v.keys())} words not available in GloVe dict: {vocab - w2v.keys()}')  # missing words
 	
 	if save:
 		w2v_df = pd.DataFrame.from_dict(w2v, orient='index')
@@ -39,3 +42,14 @@ if __name__ == "__main__":
 		lst_glove_emb.append(glove_embed)
 	
 	df_no_punc['glove_emb'] = lst_glove_emb
+	
+	## Obtain stats
+	print(f'Number unique words with multiple senses: lemmas {len(df_no_punc.critical_word_lemma.unique())} with {len(df_no_punc.sense.unique())} senses')
+	plt.hist(df_no_punc.num_unique_senses_crit_word.unique(),
+			 bins=10)
+	plt.show()
+	
+	
+	
+	if save:
+		df_no_punc.to_pickle(f'dfs_semcor_all_no_punc_w_glove_emb_{date_tag}.pkl')

@@ -1,12 +1,15 @@
-
 from utils import *
+
+semcor = False
+masc = True
 
 now = datetime.now()
 date_tag = now.strftime("%Y%m%d")
 
 if __name__ == "__main__":
-
+    
     # Get paths
+    
     semcor = glob.glob("semcor/*.xml")
     
     dfs_semcor = []
@@ -42,17 +45,34 @@ if __name__ == "__main__":
     dfs_semcor_all.loc[dfs_semcor_all.critical_word_bool == 1].lemma
     
     # Append column that denotes how many unique senses each critical word has
-    lst_num_unique_senses_crit_word = []
+    lst_num_sense_occurrences = []
     lst_crit_lemma_words = []
-    for s in dfs_semcor_all.unique_id.unique():
+    lst_num_lemma_across_all_sents = []
+    lst_num_unique_senses_for_lemma = []
+    
+    for s in dfs_semcor_all.unique_id.unique(): # for each single sentence
         df_sent = dfs_semcor_all.query('unique_id == @s')
         crit_word = df_sent.query('critical_word_bool == 1').lemma.values[0]
         crit_sense = df_sent.query('critical_word_bool == 1').sense.values[0]
-        lst_num_unique_senses_crit_word.append([d_count[crit_sense]] * len(df_sent))
         lst_crit_lemma_words.append([crit_word] * len(df_sent))
+
+        # how many times does that particular sense appear across all sentences
+        num_occurrences_sense_across_all_sents = d_count[crit_sense]
+        lst_num_sense_occurrences.append([num_occurrences_sense_across_all_sents] * len(df_sent))
+        
+        # how many sentences does the lemma, the crit_word, appear in
+        num_lemma_across_all_sents = len(dfs_semcor_all.query(f'lemma == "{crit_word}"').unique_id.unique())
+        lst_num_lemma_across_all_sents.append([num_lemma_across_all_sents] * len(df_sent))
+        
+        # how many unique senses does that lemma have
+        num_unique_senses_for_lemma = len(dfs_semcor_all.query(f'lemma == "{crit_word}"').sense.unique())
+        lst_num_unique_senses_for_lemma.append([num_unique_senses_for_lemma] * len(df_sent))
+        
     
     dfs_semcor_all['critical_word_lemma'] =  [item for sublist in lst_crit_lemma_words for item in sublist]
-    dfs_semcor_all['num_unique_senses_crit_word'] = [item for sublist in lst_num_unique_senses_crit_word for item in sublist]
+    dfs_semcor_all['num_occurrences_sense_across_all_sents'] = [item for sublist in lst_num_sense_occurrences for item in sublist]
+    dfs_semcor_all['num_lemma_across_all_sents'] = [item for sublist in lst_num_lemma_across_all_sents for item in sublist]
+    dfs_semcor_all['num_unique_senses_for_lemma'] = [item for sublist in lst_num_unique_senses_for_lemma for item in sublist]
     
     dfs_semcor_all.to_pickle(f'dfs_semcor_all_{date_tag}.pkl')
     
