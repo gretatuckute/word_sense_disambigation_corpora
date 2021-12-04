@@ -5,6 +5,7 @@ import os
 from string import punctuation
 import glob
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 from datetime import datetime
 
 GLOVEDIR = '/Users/gt/Dropbox (MIT)/SemComp/features/database/glove_database/'
@@ -21,7 +22,7 @@ GLOVEDIR = '/Users/gt/Dropbox (MIT)/SemComp/features/database/glove_database/'
 #                   've':'have',}
 
 ### OBTAINING SENTENCES FORM XML ###
-def obtain_df_amb_words(file_path, min_sent_len=8, max_sent_len=12):
+def obtain_df_amb_words(file_path, min_sent_len=6, max_sent_len=16):
 	df = pd.read_xml(file_path)
 	
 	# Tokenize into sentences
@@ -111,11 +112,13 @@ def read_glove_embed(vocab, glove_path):
 	"""
 	w2v = {}
 	with open(glove_path, 'r') as f:
-		for line in f:
+		# num_lines = sum(1 for line in f)
+		# for line in tqdm(enumerate(f), total = num_lines):
+		for line in tqdm(f):
 			tokens = line.strip().split(' ')
-			w = tokens[0]
+			w = tokens[0] # the word
 			if w in vocab:
-				v = tokens[1:]
+				v = tokens[1:] # first index is the word
 				w2v[w] = np.array(v, dtype=float)
 	return w2v
 

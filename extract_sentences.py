@@ -9,26 +9,30 @@ date_tag = now.strftime("%Y%m%d")
 if __name__ == "__main__":
     
     # Get paths
+    if semcor:
+        paths = glob.glob("semcor/*.xml")
+        save_str = 'semcor'
+    if masc:
+        paths = glob.glob("masc/*/*/*.xml")
+        save_str = 'masc'
     
-    semcor = glob.glob("semcor/*.xml")
-    
-    dfs_semcor = []
-    for semcor_path in tqdm(semcor):
-        path = join(os.getcwd(), semcor_path)
+    dfs = []
+    for p in tqdm(paths):
+        path = join(os.getcwd(), p)
         # print(path)
         # path = join(os.getcwd(), 'semcor/br-c17.xml')
         df_semcor = obtain_df_amb_words(path)
-        dfs_semcor.append(df_semcor)
+        dfs.append(df_semcor)
 
-    dfs_semcor_all = pd.concat(dfs_semcor, axis=0).reset_index()
+    dfs_all = pd.concat(dfs, axis=0).reset_index()
     
-    dfs_semcor_all['unique_id'] = dfs_semcor_all.file_path.str.split('/').str[-1].str.split('.').str[0] + '.' + dfs_semcor_all.sent_num.astype(str)
-    dfs_semcor_all['critical_word_bool'] = [1 if x != None else 0 for x in dfs_semcor_all.sense.values]
+    dfs_all['unique_id'] = dfs_all.file_path.str.split('/').str[-1].str.split('.').str[0] + '.' + dfs_all.sent_num.astype(str)
+    dfs_all['critical_word_bool'] = [1 if x != None else 0 for x in dfs_all.sense.values]
     
-    print(f'Num unique sentences in semcor files: {len(dfs_semcor_all["unique_id"].unique())}')
+    print(f'Num unique sentences in {save_str} files: {len(dfs_all["unique_id"].unique())}')
     
     # How many ambiuous words do we have:
-    df_words_amb = dfs_semcor_all[~dfs_semcor_all['sense'].isnull()]
+    df_words_amb = dfs_all[~dfs_all['sense'].isnull()]
     
     print(f'Number unique words with multiple senses: {len(df_words_amb.words_no_punc.unique())}, lemmas {len(df_words_amb.lemma.unique())} with {len(df_words_amb.sense.unique())} senses')
 
@@ -37,12 +41,12 @@ if __name__ == "__main__":
     
     ## Create a column that has the sentence without punctuation and with the ambigious word as the lemma (the column of interest that we would
     # ultimately like to use in our model, i.e. a sentence with no punctuation and the critical word lemmatized)
-    dfs_semcor_all['words_no_punc_w_lemma_critical_word'] = dfs_semcor_all['words_no_punc']
-    critical_word_index = dfs_semcor_all.loc[dfs_semcor_all.critical_word_bool == 1].index
+    dfs_all['words_no_punc_w_lemma_critical_word'] = dfs_all['words_no_punc']
+    critical_word_index = dfs_all.loc[dfs_all.critical_word_bool == 1].index
     
     # replace critical word with the lemma
-    dfs_semcor_all.loc[dfs_semcor_all.critical_word_bool == 1, 'words_no_punc_w_lemma_critical_word'] = \
-    dfs_semcor_all.loc[dfs_semcor_all.critical_word_bool == 1].lemma
+    dfs_all.loc[dfs_all.critical_word_bool == 1, 'words_no_punc_w_lemma_critical_word'] = \
+    dfs_all.loc[dfs_all.critical_word_bool == 1].lemma
     
     # Append column that denotes how many unique senses each critical word has
     lst_num_sense_occurrences = []
@@ -50,8 +54,8 @@ if __name__ == "__main__":
     lst_num_lemma_across_all_sents = []
     lst_num_unique_senses_for_lemma = []
     
-    for s in dfs_semcor_all.unique_id.unique(): # for each single sentence
-        df_sent = dfs_semcor_all.query('unique_id == @s')
+    for s in dfs_all.unique_id.unique(): # for each single sentence
+        df_sent = dfs_all.query('unique_id == @s')
         crit_word = df_sent.query('critical_word_bool == 1').lemma.values[0]
         crit_sense = df_sent.query('critical_word_bool == 1').sense.values[0]
         lst_crit_lemma_words.append([crit_word] * len(df_sent))
@@ -61,20 +65,20 @@ if __name__ == "__main__":
         lst_num_sense_occurrences.append([num_occurrences_sense_across_all_sents] * len(df_sent))
         
         # how many sentences does the lemma, the crit_word, appear in
-        num_lemma_across_all_sents = len(dfs_semcor_all.query(f'lemma == "{crit_word}"').unique_id.unique())
+        num_lemma_across_all_sents = len(dfs_all.query(f'lemma == "{crit_word}"').unique_id.unique())
         lst_num_lemma_across_all_sents.append([num_lemma_across_all_sents] * len(df_sent))
         
         # how many unique senses does that lemma have
-        num_unique_senses_for_lemma = len(dfs_semcor_all.query(f'lemma == "{crit_word}"').sense.unique())
+        num_unique_senses_for_lemma = len(dfs_all.query(f'lemma == "{crit_word}"').sense.unique())
         lst_num_unique_senses_for_lemma.append([num_unique_senses_for_lemma] * len(df_sent))
         
     
-    dfs_semcor_all['critical_word_lemma'] =  [item for sublist in lst_crit_lemma_words for item in sublist]
-    dfs_semcor_all['num_occurrences_sense_across_all_sents'] = [item for sublist in lst_num_sense_occurrences for item in sublist]
-    dfs_semcor_all['num_lemma_across_all_sents'] = [item for sublist in lst_num_lemma_across_all_sents for item in sublist]
-    dfs_semcor_all['num_unique_senses_for_lemma'] = [item for sublist in lst_num_unique_senses_for_lemma for item in sublist]
+    dfs_all['critical_word_lemma'] =  [item for sublist in lst_crit_lemma_words for item in sublist]
+    dfs_all['num_occurrences_sense_across_all_sents'] = [item for sublist in lst_num_sense_occurrences for item in sublist]
+    dfs_all['num_lemma_across_all_sents'] = [item for sublist in lst_num_lemma_across_all_sents for item in sublist]
+    dfs_all['num_unique_senses_for_lemma'] = [item for sublist in lst_num_unique_senses_for_lemma for item in sublist]
     
-    dfs_semcor_all.to_pickle(f'dfs_semcor_all_{date_tag}.pkl')
+    dfs_all.to_pickle(f'dfs_{save_str}_all_{date_tag}.pkl')
     
 
     
